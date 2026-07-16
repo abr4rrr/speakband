@@ -2,9 +2,11 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Card, Button } from '@/components/ui/primitives';
 import { APP_NAME, FREE_TRIES_LIMIT } from '@/lib/constants';
+import { ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   return (
@@ -39,7 +41,17 @@ function LoginCard() {
 
   return (
     <div className="mx-auto max-w-sm py-12">
-      <Card className="text-center">
+      <div className="animate-fade-in-up text-center mb-8">
+        <Image
+          src="/speakband-logo.png"
+          alt="SpeakBand"
+          width={64}
+          height={64}
+          className="mx-auto h-16 w-16 object-contain"
+        />
+      </div>
+
+      <Card className="animate-fade-in-up animate-delay-1 text-center">
         <h1 className="font-display text-2xl font-bold text-ink">Sign in to {APP_NAME}</h1>
         <p className="mt-2 text-sm text-ink-soft">
           Your first {FREE_TRIES_LIMIT} answer checks are free — no card required.
@@ -57,7 +69,12 @@ function LoginCard() {
 
         {error && <p className="mt-4 text-sm text-flag">{error}</p>}
 
-        <p className="mt-6 text-xs text-ink-soft">
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-ink-muted">
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+          <span>Aligned with British Council IELTS standards</span>
+        </div>
+
+        <p className="mt-4 text-xs text-ink-muted">
           By continuing, you agree to receive a transcription and AI-generated feedback on the
           audio you submit.
         </p>

@@ -24,9 +24,12 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — IELTS Speaking Answer Checker`,
+  title: `${APP_NAME} — AI-Powered IELTS Speaking Practice`,
   description:
-    'Record your IELTS Speaking Part 1, 2, or 3 answers and get an instant band score, transcription, corrections, and a model answer.',
+    'Practice IELTS Speaking Parts 1, 2 & 3 and get instant AI-powered band scores aligned with British Council IELTS assessment criteria. Transcription, corrections, and Band 8-9 model answers in under a minute.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable}`}>
       <body className="min-h-screen bg-paper font-body text-ink antialiased">
         <Navbar />
-        <main className="mx-auto min-h-[calc(100vh-73px)] max-w-5xl px-6 py-10">{children}</main>
+        <main className="mx-auto min-h-[calc(100vh-73px)] max-w-5xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
       </body>
     </html>
   );

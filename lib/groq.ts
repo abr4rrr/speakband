@@ -81,26 +81,23 @@ function targetLengthForPart(part: IeltsPart): string {
 function buildScoringPrompt(part: IeltsPart, questionText: string, transcription: string, cueCardPoints?: string[] | null): string {
   const cueCardBlock =
     part === 2 && cueCardPoints?.length
-      ? `\nCue card - the candidate was told "You should say:"\n${cueCardPoints.map((p) => `- ${p}`).join('\n')}\n`
+      ? `\nCue card points:\n${cueCardPoints.map((p) => `- ${p}`).join('\n')}\n`
       : '';
 
-  return `You are a certified IELTS Speaking examiner scoring a candidate's spoken response to an official IELTS Speaking Part ${part} question.
+  return `IELTS Speaking examiner. Score this Part ${part} response.
 
-QUESTION: "${questionText}"
-${cueCardBlock}
-TRANSCRIPTION:
-${transcription || '[No intelligible English speech was transcribed.]'}
+Q: "${questionText}"${cueCardBlock}
+TRANSCRIPT: ${transcription || '[Empty/unintelligible]'}
 
-Do the following, in order:
+Instructions:
+- Keep transcription verbatim. If empty, all bands=0, explain in feedbackSummary, still provide modelAnswer.
+- Score 0-9 (half-band increments) on: Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy, Pronunciation. Estimate Pronunciation conservatively from transcript signals (repetitions, missing words).
+- overall = mean of four criteria, rounded to nearest 0.5.
+- feedbackSummary: 2 sentences — one strength, one improvement area.
+- corrections: only real errors from transcript with exact quotes. Empty array if none.
+- modelAnswer: Band 8-9 spoken answer, ${targetLengthForPart(part)}.
 
-1. Preserve transcription exactly as provided. If the transcription is empty or contains no intelligible English speech, set every band score to 0, explain that clearly in feedbackSummary, leave corrections empty, and still provide a model answer.
-2. SCORE the response 0-9 (whole or half bands only, e.g. 5.0, 5.5, 6.0) against the four official criteria: Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy, and Pronunciation. Since you only receive the transcript after Groq Whisper transcription, estimate Pronunciation conservatively from transcription confidence signals such as missing words, repetitions, and unclear segments, and mention this limitation in feedbackSummary when relevant.
-3. Compute "overall" as the mean of the four criteria, rounded to the nearest 0.5.
-4. Write feedbackSummary: 2-3 sentences, specific and encouraging, referencing something the candidate actually did well and the single highest-impact thing to improve.
-5. List corrections: only concrete grammar or vocabulary errors the candidate actually produced, quoting their exact words. Never invent an error that isn't in the transcription. Return an empty array if the response was error-free.
-6. Write modelAnswer: a Band 8-9 answer to this exact question, natural and idiomatic as if spoken aloud (not a written essay), ${targetLengthForPart(part)}.
-
-Respond with only the JSON object matching this JSON Schema:
+Return JSON matching this schema:
 ${JSON.stringify(RESPONSE_SCHEMA)}`;
 }
 

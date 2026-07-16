@@ -2,11 +2,11 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/primitives';
+import { Button, AlertBanner } from '@/components/ui/primitives';
 import type { PaymentMethod } from '@/types/database';
 
 const inputClass =
-  'w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-brand';
+  'w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-ink shadow-sm placeholder:text-ink-muted/60 transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 focus:outline-none';
 
 export function PaymentForm() {
   const router = useRouter();
@@ -48,17 +48,17 @@ export function PaymentForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-ink">Payment method</label>
+        <label className="mb-2 block text-sm font-medium text-ink">Payment method</label>
         <div className="flex gap-3">
           {(['bkash', 'nagad'] as const).map((m) => (
             <button
               type="button"
               key={m}
               onClick={() => setMethod(m)}
-              className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold capitalize transition-colors ${
+              className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold capitalize transition-all ${
                 method === m
-                  ? 'border-brand bg-brand-soft text-brand-dark'
-                  : 'border-border text-ink-soft'
+                  ? 'border-brand bg-brand-soft text-brand-dark shadow-sm'
+                  : 'border-border text-ink-soft hover:border-brand/30'
               }`}
             >
               {m}
@@ -98,7 +98,13 @@ export function PaymentForm() {
         />
       </Field>
 
-      {error && <p className="text-sm text-flag">{error}</p>}
+      {error && (
+        <AlertBanner
+          variant="error"
+          message={error}
+          onRetry={() => setError(null)}
+        />
+      )}
 
       <Button type="submit" loading={loading} className="w-full justify-center py-3">
         Submit for verification
@@ -110,7 +116,7 @@ export function PaymentForm() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-ink">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-ink">{label}</label>
       {children}
     </div>
   );

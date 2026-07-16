@@ -2,7 +2,7 @@
 // Renaming the product, changing the price, or swapping payment numbers is a
 // .env change - never a code change.
 
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'SpeakScore BD';
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'SpeakBand';
 
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 

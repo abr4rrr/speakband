@@ -108,11 +108,16 @@ export function useAudioRecorder(maxSeconds: number): UseAudioRecorderResult {
         if (elapsed >= maxSeconds) stop();
       }, 200);
     } catch (err) {
-      setError(
-        err instanceof Error && err.name === 'NotAllowedError'
-          ? 'Microphone access was denied. Allow microphone access in your browser and try again.'
-          : 'Could not access your microphone. Check your device and try again.'
-      );
+      const errorName = err instanceof Error ? err.name : '';
+      if (errorName === 'NotAllowedError') {
+        setError('Microphone access was denied. Please allow microphone access in your browser settings and try again.');
+      } else if (errorName === 'NotFoundError') {
+        setError('No microphone detected. Please connect a microphone and try again.');
+      } else if (errorName === 'NotReadableError') {
+        setError('Your microphone is in use by another application. Please close it and try again.');
+      } else {
+        setError('Could not access your microphone. Please check your device settings and try again.');
+      }
     }
   }, [maxSeconds, stop]);
 

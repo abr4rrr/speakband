@@ -1,4 +1,6 @@
-import { Card } from '@/components/ui/primitives';
+'use client';
+
+import { ExpandableCard, CopyButton } from '@/components/ui/primitives';
 import type { Correction } from '@/types/database';
 
 interface Segment {
@@ -54,31 +56,34 @@ export function TranscriptWithFixes({
 }) {
   if (!transcription) {
     return (
-      <Card>
-        <h3 className="font-display text-lg font-semibold text-ink">Transcription</h3>
-        <p className="mt-2 text-sm text-ink-soft">No transcription is available for this attempt.</p>
-      </Card>
+      <ExpandableCard title="Transcription" defaultExpanded>
+        <p className="text-sm text-ink-soft">No transcription is available for this attempt.</p>
+      </ExpandableCard>
     );
   }
 
   const segments = buildSegments(transcription, corrections);
 
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="font-display text-lg font-semibold text-ink">Transcription</h3>
-        {corrections.length > 0 && (
-          <span className="shrink-0 text-xs font-medium text-ink-soft">
-            {corrections.length} fix{corrections.length === 1 ? '' : 'es'} highlighted
+    <ExpandableCard
+      title="Transcription"
+      badge={
+        corrections.length > 0 ? (
+          <span className="shrink-0 rounded-full bg-flag-soft px-2.5 py-0.5 text-[10px] font-semibold text-flag">
+            {corrections.length} fix{corrections.length === 1 ? '' : 'es'}
           </span>
-        )}
+        ) : undefined
+      }
+      defaultExpanded
+    >
+      <div className="flex justify-end mb-2">
+        <CopyButton text={transcription} />
       </div>
-
-      <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+      <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
         {segments.map((segment, i) =>
           segment.correction ? (
             <span key={i} className="group relative">
-              <span className="rounded bg-flag-soft px-0.5 text-flag line-through decoration-flag/60">
+              <span className="rounded bg-flag-soft px-0.5 text-flag line-through decoration-flag/50 decoration-1">
                 {segment.text}
               </span>
               <span className="mx-1 rounded bg-good-soft px-1 font-medium text-good">
@@ -86,8 +91,9 @@ export function TranscriptWithFixes({
               </span>
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-56 -translate-x-1/2 rounded-lg bg-ink px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-60 -translate-x-1/2 rounded-xl bg-ink px-3.5 py-2.5 text-xs leading-snug text-white opacity-0 shadow-elevated transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
               >
+                <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-ink" />
                 {segment.correction.explanation}
               </span>
             </span>
@@ -96,6 +102,6 @@ export function TranscriptWithFixes({
           )
         )}
       </p>
-    </Card>
+    </ExpandableCard>
   );
 }
