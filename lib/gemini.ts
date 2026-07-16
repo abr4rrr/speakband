@@ -124,10 +124,10 @@ export async function analyzeSpeakingAudio(params: AnalyzeParams): Promise<Speak
           ],
         },
       ],
-      generation_config: {
+      generationConfig: {
         temperature: 0.4,
-        response_format: { text: { mime_type: 'application/json' } },
-        response_schema: RESPONSE_SCHEMA,
+        responseMimeType: 'application/json',
+        responseSchema: RESPONSE_SCHEMA,
       },
     }),
   });
