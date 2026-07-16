@@ -1,0 +1,36 @@
+# Netlify deployment configuration for the Next.js App Router.
+# Netlify auto-detects Next.js and installs the official Next.js Runtime
+# (@netlify/plugin-nextjs) at build time - it does not need to be listed in
+# package.json. The [[plugins]] block below just makes that explicit.
+#
+# The runtime turns every Route Handler (app/api/**/route.ts), Server Action,
+# and SSR page into a Netlify Function automatically. There is no separate
+# /netlify/functions folder in this project - that's expected, not missing.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8888
+  framework = "next"
+
+# --- Operational note on function timeouts ----------------------------------
+# /api/analyze calls the Gemini API with an audio file, which can take several
+# seconds. Netlify's default synchronous function timeout is 10s on free tier
+# and 26s on paid tiers. If you see 502/504s from /api/analyze under load or
+# with long Part 2 answers, either upgrade your Netlify plan or move that
+# route to a Background Function (see README.md, "Scaling the analyze route").
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "microphone=(self), camera=(), geolocation=()"

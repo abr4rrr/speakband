@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens — see README.md "Design notes" for the reasoning.
+ * Palette: an academic, trustworthy blue paired with a muted "band 8-9 gold"
+ * accent — built around the idea of a measured score, not a generic SaaS
+ * gradient. Type: a structured grotesk for display, a plain humanist sans
+ * for body copy, and a monospace face reserved for anything that is
+ * literally a measurement (band numbers, timers, transaction IDs).
+ */
+@theme {
+  --color-ink: #12213a;
+  --color-ink-soft: #3d4a63;
+  --color-paper: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-border: #e4e1d8;
+
+  --color-brand: #2e5eaa;
+  --color-brand-dark: #1f4483;
+  --color-brand-soft: #e8eefb;
+
+  --color-gold: #c99a3d;
+  --color-gold-soft: #f7ecd3;
+
+  --color-good: #3f7d5c;
+  --color-good-soft: #e6f0ea;
+
+  --color-flag: #a8452e;
+  --color-flag-soft: #f7e6e1;
+
+  --radius-card: 1rem;
+}
+
+/*
+ * `inline` tells Tailwind to inline the resolved value into each utility
+ * (font-display, font-body, font-mono) instead of leaving a bare var()
+ * reference — required because these values point at next/font's own CSS
+ * variables (set via a className on <html> in app/layout.tsx), which Tailwind
+ * can't statically see the value of otherwise. See the Next.js font docs'
+ * Tailwind integration section for the same pattern.
+ */
+@theme inline {
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Visible keyboard focus everywhere, including custom components. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Soft "breathing" ring used behind the record button while recording. */
+@keyframes record-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.record-pulse-ring {
+  animation: record-pulse 1.8s ease-out infinite;
+}
