@@ -2,11 +2,9 @@
  * Encodes raw PCM samples into a standard 16-bit mono WAV file.
  *
  * Why not just use MediaRecorder? Its output format depends on the browser
- * (webm/opus on Chrome, mp4/aac on Safari, ogg/opus on Firefox), and Gemini's
- * documented supported audio MIME types are wav, mp3, aiff, aac, ogg, and
- * flac - notably NOT webm. Encoding to WAV ourselves via the Web Audio API
- * sidesteps that mismatch entirely: every browser can capture raw samples,
- * and WAV is Gemini's #1 documented format everywhere.
+ * (webm/opus on Chrome, mp4/aac on Safari, ogg/opus on Firefox). Encoding to
+ * WAV ourselves via the Web Audio API gives the server one predictable format
+ * to send to Groq's transcription endpoint.
  */
 
 export function encodeWavFromFloat32(samples: Float32Array, sampleRate: number): Blob {

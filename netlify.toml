@@ -21,10 +21,10 @@
   framework = "next"
 
 # --- Operational note on function timeouts ----------------------------------
-# /api/analyze calls the Gemini API with an audio file, which can take several
-# seconds. Netlify's default synchronous function timeout is 10s on free tier
-# and 26s on paid tiers. If you see 502/504s from /api/analyze under load or
-# with long Part 2 answers, either upgrade your Netlify plan or move that
+# /api/analyze calls Groq for audio transcription and scoring, which can take
+# several seconds. Netlify's default synchronous function timeout is 10s on free
+# tier and 26s on paid tiers. If you see 502/504s from /api/analyze under load
+# or with long Part 2 answers, either upgrade your Netlify plan or move that
 # route to a Background Function (see README.md, "Scaling the analyze route").
 
 [[headers]]

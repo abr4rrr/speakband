@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { analyzeSpeakingAudio } from '@/lib/gemini';
+import { analyzeSpeakingAudio } from '@/lib/groq';
 
 export const runtime = 'nodejs';
 // Hint for platforms that support configurable function durations. Netlify's
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       cueCardPoints,
     });
   } catch (err) {
-    console.error('[api/analyze] Gemini call failed:', err);
+    console.error('[api/analyze] Groq call failed:', err);
     return NextResponse.json({ error: 'analysis_failed' }, { status: 502 });
   }
 

@@ -2,7 +2,7 @@
 
 An IELTS Speaking answer checker: record a Part 1, 2, or 3 answer, get an
 instant band score (overall + all four criteria), a transcription with
-inline corrections, and a Band 8-9 model answer — powered by Google Gemini.
+inline corrections, and a Band 8-9 model answer — powered by Groq.
 Two free tries per account, then a one-time bKash/Nagad payment unlocked by
 manual admin approval.
 
@@ -15,7 +15,7 @@ manual admin approval.
 - **Framework:** Next.js 16 (App Router, TypeScript, Turbopack)
 - **Styling:** Tailwind CSS v4 (CSS-first config — see `app/globals.css`)
 - **Auth + DB + Storage:** Supabase (Postgres, Google OAuth, private audio bucket, Row Level Security)
-- **AI:** Google Gemini (`gemini-2.5-flash` by default) — a single multimodal call transcribes the audio and scores it
+- **AI:** Groq (`whisper-large-v3-turbo` for transcription, `llama-3.3-70b-versatile` for scoring by default)
 - **Hosting:** Netlify, via the official Next.js Runtime (`@netlify/plugin-nextjs`)
 
 Every Route Handler under `app/api/**/route.ts` becomes a Netlify Function
@@ -41,16 +41,14 @@ folder, and that's expected, not missing.
    secret — it bypasses RLS and is only used server-side by the admin and
    analyze routes.
 
-## 2. Get a Gemini API key
+## 2. Get a Groq API key
 
-Create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+Create a key at [console.groq.com/keys](https://console.groq.com/keys).
 
-**On the model name:** `gemini-1.5-pro`/`gemini-1.5-flash` have been fully
-retired by Google (requests now 404) — this project defaults to
-`gemini-2.5-flash` via the `GEMINI_MODEL` env var instead. It's the current
-cost-effective choice for this workload. For noticeably higher-quality
-scoring at meaningfully higher per-request cost, try `gemini-3.5-flash` or
-a `-pro` tier model — just change the env var, no code changes needed.
+The app uses two Groq calls for each submission: first `GROQ_TRANSCRIPTION_MODEL`
+transcribes the audio, then `GROQ_CHAT_MODEL` scores the transcript and returns
+the same JSON shape the app stores today. You can change either model with
+environment variables, no code changes needed.
 
 ## 3. Configure environment variables
 
@@ -130,10 +128,10 @@ Engnovate's or any other specific product's UI — swap colors/fonts in
 ## Known limitations / good next steps
 
 - **Pronunciation scoring** is inherently the hardest of the four criteria
-  to judge from audio alone, for a human examiner or an AI. Gemini is
-  instructed to note when audio quality limits this judgment, but treat
-  pronunciation bands as more approximate than the other three.
-- **Function timeouts:** `/api/analyze` calls Gemini with an audio file,
+  to judge from automatic transcription. Groq Whisper handles the speech-to-text
+  pass, then the scoring model estimates pronunciation conservatively from the
+  transcript and should note this limitation when relevant.
+- **Function timeouts:** `/api/analyze` calls Groq for transcription and scoring,
   which can take several seconds. Netlify's synchronous function timeout is
   10s on the free tier and 26s on paid tiers. If you see timeouts under load
   or with long Part 2 answers, upgrade your plan or move this route to a
