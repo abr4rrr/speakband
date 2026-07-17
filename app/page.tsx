@@ -151,8 +151,7 @@ export default async function HomePage() {
             <span className="text-xs text-ink-muted">Since 2022</span>
           </div>
           <p className="text-xs text-ink-muted">
-            © {new Date().getFullYear()} {APP_NAME}. AI-powered IELTS preparation tool. Not affiliated with British Council, IDP, or Cambridge.
-          </p>
+            © 2022 {APP_NAME}. AI-powered IELTS preparation tool. Not affiliated with the British Council, IDP, or Cambridge.
         </div>
       </footer>
     </div>

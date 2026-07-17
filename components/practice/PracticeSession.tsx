@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Square, RotateCcw, Send, CheckCircle2, Lightbulb } from 'lucide-react';
+import { Mic, Square, RotateCcw, Send, CheckCircle2, Lightbulb, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAudioRecorder } from './useAudioRecorder';
 import { Button, Card, AlertBanner } from '@/components/ui/primitives';
+import { cn } from '@/lib/utils';
 import type { Question, IeltsPart } from '@/types/database';
 
 type Phase = 'idle' | 'preparing' | 'recording' | 'review' | 'uploading' | 'analyzing';
@@ -39,13 +40,16 @@ export function PracticeSession({
   userId: string;
 }) {
   const router = useRouter();
+  const [currentQuestion, setCurrentQuestion] = useState<Question>(question);
   const [phase, setPhase] = useState<Phase>('idle');
   const [prepRemaining, setPrepRemaining] = useState(question.prep_seconds);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pipelineStep, setPipelineStep] = useState(0);
   const [currentTip, setCurrentTip] = useState(0);
+  const [isReloadingQuestion, setIsReloadingQuestion] = useState(false);
+  const [isSwappingQuestion, setIsSwappingQuestion] = useState(false);
 
-  const recorder = useAudioRecorder(question.max_speak_seconds);
+  const recorder = useAudioRecorder(currentQuestion.max_speak_seconds);
 
   const audioUrl = useMemo(
     () => (recorder.audioBlob ? URL.createObjectURL(recorder.audioBlob) : null),
@@ -107,13 +111,50 @@ export function PracticeSession({
   const handleStart = useCallback(() => {
     setSubmitError(null);
     if (part === 2) {
-      setPrepRemaining(question.prep_seconds);
+      setPrepRemaining(currentQuestion.prep_seconds);
       setPhase('preparing');
     } else {
       setPhase('recording');
       recorder.start();
     }
-  }, [part, question.prep_seconds, recorder]);
+  }, [part, currentQuestion.prep_seconds, recorder]);
+
+  // Fetches a different random question of the same part from Supabase and
+  // swaps it in with a brief fade transition. Only usable before recording
+  // starts, so it can never disturb an in-progress prep/record/review/submit
+  // flow or touch the user's session or usage count.
+  const handleReload = useCallback(async () => {
+    if (isReloadingQuestion || phase !== 'idle') return;
+    setIsReloadingQuestion(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('part', part);
+
+      if (error || !data || data.length === 0) {
+        setIsReloadingQuestion(false);
+        return;
+      }
+
+      const rows = data as Question[];
+      // Avoid immediately repeating the same question when another option exists.
+      const alternatives = rows.filter((q) => q.id !== currentQuestion.id);
+      const pool = alternatives.length > 0 ? alternatives : rows;
+      const next = pool[Math.floor(Math.random() * pool.length)];
+
+      setIsSwappingQuestion(true);
+      setTimeout(() => {
+        setCurrentQuestion(next);
+        setPrepRemaining(next.prep_seconds);
+        setIsSwappingQuestion(false);
+        setIsReloadingQuestion(false);
+      }, 180);
+    } catch {
+      setIsReloadingQuestion(false);
+    }
+  }, [isReloadingQuestion, phase, part, currentQuestion.id]);
 
   const handleSkipPrep = useCallback(() => {
     setPhase('recording');
@@ -148,9 +189,9 @@ export function PracticeSession({
         body: JSON.stringify({
           storagePath: path,
           part,
-          questionId: question.id,
-          questionText: question.question_text,
-          cueCardPoints: question.cue_card_points,
+          questionId: currentQuestion.id,
+          questionText: currentQuestion.question_text,
+          cueCardPoints: currentQuestion.cue_card_points,
           audioDurationSeconds: recorder.elapsedSeconds,
         }),
       });
@@ -169,34 +210,57 @@ export function PracticeSession({
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setPhase('review');
     }
-  }, [recorder.audioBlob, recorder.elapsedSeconds, userId, part, question, router]);
+  }, [recorder.audioBlob, recorder.elapsedSeconds, userId, part, currentQuestion, router]);
 
-  const prepProgress = question.prep_seconds > 0
-    ? ((question.prep_seconds - prepRemaining) / question.prep_seconds) * 100
+  const prepProgress = currentQuestion.prep_seconds > 0
+    ? ((currentQuestion.prep_seconds - prepRemaining) / currentQuestion.prep_seconds) * 100
     : 0;
 
   return (
     <div className="space-y-6">
       {/* Question card */}
       <Card className="animate-fade-in-up">
-        <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-          {question.topic}
-        </p>
-        <h2 className="mt-2 font-display text-xl font-semibold text-ink">
-          {question.question_text}
-        </h2>
-        {part === 2 && question.cue_card_points && (
-          <div className="mt-4 rounded-xl bg-brand-soft/60 p-4 border border-brand/10">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark">
-              You should say:
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
-              {question.cue_card_points.map((point, i) => (
-                <li key={i}>{point}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
+            {currentQuestion.topic}
+          </p>
+          <button
+            type="button"
+            onClick={handleReload}
+            disabled={isReloadingQuestion || phase !== 'idle'}
+            aria-label="Load a different question"
+            title="Load a different question"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft transition-all duration-200 hover:border-brand hover:text-brand active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw
+              className={cn('h-3.5 w-3.5', isReloadingQuestion && 'animate-spin')}
+              aria-hidden
+            />
+            {isReloadingQuestion ? 'Loading…' : 'Reload question'}
+          </button>
+        </div>
+        <div
+          className={cn(
+            'transition-all duration-200 ease-out',
+            isSwappingQuestion ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0'
+          )}
+        >
+          <h2 className="mt-2 font-display text-xl font-semibold text-ink">
+            {currentQuestion.question_text}
+          </h2>
+          {part === 2 && currentQuestion.cue_card_points && (
+            <div className="mt-4 rounded-xl bg-brand-soft/60 p-4 border border-brand/10">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark">
+                You should say:
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
+                {currentQuestion.cue_card_points.map((point, i) => (
+                  <li key={i}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* Recording interface */}
@@ -215,7 +279,7 @@ export function PracticeSession({
               </button>
               <p className="max-w-xs text-sm text-ink-soft">
                 {part === 2
-                  ? `Tap to start your ${question.prep_seconds}-second preparation time.`
+                  ? `Tap to start your ${currentQuestion.prep_seconds}-second preparation time.`
                   : 'Tap to start recording your answer.'}
               </p>
             </div>
@@ -274,7 +338,7 @@ export function PracticeSession({
               <div className="font-mono text-3xl font-bold text-ink">
                 {formatTimer(recorder.elapsedSeconds)}
                 <span className="text-lg font-medium text-ink-muted">
-                  {' '}/ {formatTimer(question.max_speak_seconds)}
+                  {' '}/ {formatTimer(currentQuestion.max_speak_seconds)}
                 </span>
               </div>
 
