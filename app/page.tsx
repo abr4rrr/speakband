@@ -149,12 +149,15 @@ export default async function HomePage() {
             />
             <span className="font-display text-sm font-bold text-ink">{APP_NAME}</span>
             <span className="text-xs text-ink-muted">Since 2022</span>
-          </div>
-          <p className="text-xs text-ink-muted">
-            © 2022 {APP_NAME}. AI-powered IELTS preparation tool. Not affiliated with the British Council, IDP, or Cambridge.
-        </div>
-      </footer>
-    </div>
+     </div>
+
+<p className="text-xs text-ink-muted">
+  © 2022 {APP_NAME}. AI-powered IELTS preparation tool. Not affiliated with the British Council, IDP, or Cambridge.
+</p>
+
+</div>
+</footer>
+</div>
   );
 }
 
