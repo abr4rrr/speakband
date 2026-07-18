@@ -3,6 +3,92 @@ import type { IeltsPart, BandScores, Correction } from '@/types/database';
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const GROQ_CHAT_MODEL = process.env.GROQ_CHAT_MODEL || 'llama-3.3-70b-versatile';
 const GROQ_TRANSCRIPTION_MODEL = process.env.GROQ_TRANSCRIPTION_MODEL || 'whisper-large-v3-turbo';
+const MAX_GROQ_API_KEYS = 5;
+
+// -----------------------------------------------------------------------------
+// Multi-key failover
+//
+// Isolated to credential resolution + the request wrapper below. It does not
+// touch prompts, the response schema, JSON parsing, or anything in
+// analyzeSpeakingAudio's public contract - it only changes which key a given
+// HTTP call uses and, on a rate-limit/quota failure, retries the same call
+// with the next key before giving up.
+// -----------------------------------------------------------------------------
+
+/** Thrown for any non-2xx Groq HTTP response, carrying the status code so the
+ *  failover wrapper can distinguish "rate limited, try the next key" from
+ *  "this request is bad, don't retry it". */
+class GroqApiError extends Error {
+  readonly status: number;
+  readonly body: string;
+
+  constructor(status: number, body: string, message: string) {
+    super(message);
+    this.name = 'GroqApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+/**
+ * Resolves the active pool of Groq API keys, in the order they should be
+ * tried:
+ *   1. GROQ_API_KEY_1 .. GROQ_API_KEY_5, in that sequence (any gaps/unset
+ *      slots are skipped).
+ *   2. If none of the numbered keys are set, fall back to the single legacy
+ *      GROQ_API_KEY, preserving existing single-key deployments unchanged.
+ */
+function resolveGroqApiKeys(): string[] {
+  const numbered: string[] = [];
+  for (let i = 1; i <= MAX_GROQ_API_KEYS; i++) {
+    const key = process.env[`GROQ_API_KEY_${i}`];
+    if (key && key.trim()) numbered.push(key.trim());
+  }
+  if (numbered.length > 0) return numbered;
+
+  const legacy = process.env.GROQ_API_KEY;
+  return legacy && legacy.trim() ? [legacy.trim()] : [];
+}
+
+/** True only for infrastructure/rate-limit style failures that warrant
+ *  rotating to the next key: HTTP 429, or a message/body mentioning quota or
+ *  credit exhaustion. Everything else (bad requests, malformed prompts, bad
+ *  audio buffers, JSON parsing bugs, auth errors, etc.) returns false so the
+ *  caller fails immediately instead of retrying. */
+function isFailoverEligible(error: unknown): boolean {
+  if (!(error instanceof GroqApiError)) return false;
+  if (error.status === 429) return true;
+  const haystack = `${error.message} ${error.body}`.toLowerCase();
+  return haystack.includes('quota') || haystack.includes('credits');
+}
+
+/**
+ * Sequential retry helper: runs `execute` with the first key in the pool
+ * (index 0), and on a rate-limit/quota-style failure retries with the next
+ * key in order. Returns as soon as any attempt succeeds. Any non-failover
+ * error is thrown immediately with no retry. If every key in the pool is
+ * exhausted, the last error is thrown up to the caller.
+ */
+async function withGroqFailover<T>(execute: (apiKey: string) => Promise<T>): Promise<T> {
+  const keys = resolveGroqApiKeys();
+  if (keys.length === 0) {
+    throw new Error(
+      'No Groq API key is configured. Set GROQ_API_KEY, or GROQ_API_KEY_1 through GROQ_API_KEY_5.'
+    );
+  }
+
+  let lastError: unknown;
+  for (const apiKey of keys) {
+    try {
+      return await execute(apiKey);
+    } catch (error) {
+      lastError = error;
+      if (!isFailoverEligible(error)) throw error;
+      // Otherwise: rate limit / quota / credits - fall through and try the next key.
+    }
+  }
+  throw lastError;
+}
 
 export interface SpeakingAnalysis {
   transcription: string;
@@ -137,7 +223,11 @@ async function transcribeAudio(params: AnalyzeParams, apiKey: string): Promise<s
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
-    throw new Error(`Groq transcription request failed (${response.status}): ${errorBody.slice(0, 500)}`);
+    throw new GroqApiError(
+      response.status,
+      errorBody,
+      `Groq transcription request failed (${response.status}): ${errorBody.slice(0, 500)}`
+    );
   }
 
   const data = await response.json();
@@ -174,7 +264,11 @@ async function scoreTranscription(params: AnalyzeParams, transcription: string, 
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
-    throw new Error(`Groq chat request failed (${response.status}): ${errorBody.slice(0, 500)}`);
+    throw new GroqApiError(
+      response.status,
+      errorBody,
+      `Groq chat request failed (${response.status}): ${errorBody.slice(0, 500)}`
+    );
   }
 
   const data = await response.json();
@@ -197,9 +291,6 @@ async function scoreTranscription(params: AnalyzeParams, transcription: string, 
 }
 
 export async function analyzeSpeakingAudio(params: AnalyzeParams): Promise<SpeakingAnalysis> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error('GROQ_API_KEY environment variable is not set.');
-
-  const transcription = await transcribeAudio(params, apiKey);
-  return scoreTranscription(params, transcription, apiKey);
+  const transcription = await withGroqFailover((apiKey) => transcribeAudio(params, apiKey));
+  return withGroqFailover((apiKey) => scoreTranscription(params, transcription, apiKey));
 }
